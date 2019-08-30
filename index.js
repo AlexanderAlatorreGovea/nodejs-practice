@@ -4,6 +4,13 @@ const http = require('http');
 //url parameter parses in urls
 const url = require('url');
 
+//this will concatanate a unique string
+const slugify = require('slugify');
+
+const replaceTemplate = require('./modules/replaceTemplate');
+
+
+
 ///////////////////////////////////
 ///FILES
 
@@ -32,19 +39,7 @@ fs.writeFileSync('./txt/output.txt', textOut);
 
 //top level code is only executed once it starts the program
     //product.productName is how we grab the json object from dev-data/data.json
-const replaceTemplate = (template, product) => {
-    let output = template.replace(/{%PRODUCT_NAME%}/g, product.productName);
-    output = output.replace(/{%IMAGE%}/g, product.image);
-    output = output.replace(/{%PRICE%}/g, product.price);
-    output = output.replace(/{%FROM%}/g, product.from);
-    output = output.replace(/{%NUTRIENTS%}/g, product.nutrients);
-    output = output.replace(/{%QUANTITY%}/g, product.quantity);
-    output = output.replace(/{%DESCRIPTION%}/g, product.description);
-    output = output.replace(/{%ID%}/g, product.id);
-    
-    if(!product.organic) output = output.replace(/{%NOT_ORGANIC%}/g, 'not-organic');
-    return output;
-}
+
 
 const tempOverview = fs.readFileSync(
     `${__dirname}/templates/template-overview.html`,
@@ -66,10 +61,13 @@ const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');
 
 const dataObj = JSON.parse(data);
 
+//this makes the data json add the id to the end of the string
+const slugs = dataObj.map(el => slugify(el.productName))
+
 //READS THE TEMPLATE OVEVIEW
 
 const server = http.createServer((req, res) => {
-    const pathname = req.url;
+    const { query, pathname } = (url.parse(req.url, true));
 
     //OVERVIEW PAGE
         //this will render the html template above
@@ -82,10 +80,11 @@ const server = http.createServer((req, res) => {
         res.end(output);
 
     //PRODUCT PAGE
-    } else if (pathname === '/product') {
-        res.end('this is the product')
-
-
+    } else if (pathname === "/product") {
+        res.writeHead(200, {'Content-type': 'text/html'});
+        const product = dataObj[query.id];
+        const output = replaceTemplate(tempProduct, product)
+        res.end(output)
     //API PAGE
     } else if (pathname === '/api') {
         ///this will read the file and send back the data
